@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: patient-ews
+  labels:
+    name: patient-ews
+    purpose: healthcare-ai
