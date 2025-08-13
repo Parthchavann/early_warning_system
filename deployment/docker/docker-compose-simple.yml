@@ -96,8 +96,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - API_KEY=secure-api-key-change-in-production
     volumes:
-      - ./models:/app/models
-      - ./logs:/app/logs
+      - models_data:/app/models
+      - logs_data:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,54 +127,7 @@ services:
       ews-api:
         condition: service_healthy
     volumes:
-      - ./dashboard:/app/dashboard
-
-  # Prometheus for Metrics
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ../../deployment/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-
-  # Grafana for Dashboards
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ../../deployment/monitoring/grafana:/etc/grafana/provisioning
-    depends_on:
-      - prometheus
-
-  # Data Generator for Testing
-  data-generator:
-    build:
-      context: ../../
-      dockerfile: deployment/docker/Dockerfile.data-generator
-    environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - API_BASE_URL=http://ews-api:8000
-      - API_KEY=secure-api-key-change-in-production
-      - GENERATION_INTERVAL=30
-    depends_on:
-      kafka:
-        condition: service_started
-      ews-api:
-        condition: service_healthy
-    volumes:
-      - ./scripts:/app/scripts
+      - dashboard_data:/app/dashboard
 
 volumes:
   postgres_data:
@@ -182,8 +135,9 @@ volumes:
   qdrant_data:
   redis_data:
   mlflow_artifacts:
-  prometheus_data:
-  grafana_data:
+  models_data:
+  logs_data:
+  dashboard_data:
 
 networks:
   default:

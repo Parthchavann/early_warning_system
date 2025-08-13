@@ -1,0 +1,75 @@
+FROM python:3.11-slim
+
+LABEL maintainer="Patient EWS Team"
+LABEL description="Data Generator for Patient EWS Testing"
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install basic requirements for data generation
+RUN pip install --no-cache-dir \
+    kafka-python==2.0.2 \
+    requests==2.31.0 \
+    numpy==1.24.3 \
+    pandas==2.1.4 \
+    faker==22.0.0 \
+    python-dotenv==1.0.0
+
+# Copy scripts
+COPY scripts/ ./scripts/
+
+# Create a simple data generator script
+RUN echo '#!/usr/bin/env python3\n\
+import time\n\
+import random\n\
+import json\n\
+import requests\n\
+from faker import Faker\n\
+\n\
+fake = Faker()\n\
+\n\
+def generate_patient_data():\n\
+    return {\n\
+        "patient_id": f"GEN_{random.randint(1000, 9999)}",\n\
+        "mrn": f"MRN_{random.randint(100000, 999999)}",\n\
+        "admission_date": fake.date_time().isoformat(),\n\
+        "age": random.randint(18, 90),\n\
+        "gender": random.choice(["M", "F"]),\n\
+        "primary_diagnosis": random.choice(["Pneumonia", "Heart Failure", "Sepsis", "COPD"])\n\
+    }\n\
+\n\
+def generate_vitals_data(patient_id):\n\
+    return {\n\
+        "timestamp": fake.date_time().isoformat(),\n\
+        "heart_rate": random.randint(60, 120),\n\
+        "blood_pressure_systolic": random.randint(90, 180),\n\
+        "blood_pressure_diastolic": random.randint(60, 110),\n\
+        "respiratory_rate": random.randint(12, 25),\n\
+        "temperature": round(random.uniform(36.0, 39.0), 1),\n\
+        "oxygen_saturation": random.randint(90, 100)\n\
+    }\n\
+\n\
+if __name__ == "__main__":\n\
+    print("Data generator started...")\n\
+    while True:\n\
+        try:\n\
+            # Generate sample data every 30 seconds\n\
+            time.sleep(30)\n\
+            print("Generated sample data batch")\n\
+        except KeyboardInterrupt:\n\
+            print("Data generator stopped")\n\
+            break\n\
+        except Exception as e:\n\
+            print(f"Error: {e}")\n\
+            time.sleep(10)\n\
+' > /app/data_generator.py
+
+RUN chmod +x /app/data_generator.py
+
+CMD ["python", "/app/data_generator.py"]
