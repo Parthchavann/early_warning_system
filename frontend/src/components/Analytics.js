@@ -271,85 +271,338 @@ const Analytics = () => {
         })}
       </div>
 
-      {/* Department Performance Table */}
-      {chartData?.departmentComparison && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Department Performance</h3>
-            <p className="text-sm text-gray-600">Comparative analysis across departments</p>
+      {/* Interactive Data Visualizations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Risk Distribution Donut Chart */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+        >
+          <div className="px-6 py-4 bg-gradient-to-r from-red-500 to-orange-500">
+            <h3 className="text-lg font-semibold text-white flex items-center">
+              <ExclamationTriangleIcon className="w-6 h-6 mr-2" />
+              Patient Risk Distribution
+            </h3>
+            <p className="text-red-100 text-sm">Real-time risk level breakdown</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Department
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Patients
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Response Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Accuracy
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Alert Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Efficiency
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {chartData.departmentComparison.map((dept, index) => (
-                  <motion.tr
-                    key={dept.department}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {dept.department}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {dept.patientCount}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {Math.round(dept.responseTime)} min
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        dept.accuracy >= 90 ? 'bg-green-100 text-green-800' : 
-                        dept.accuracy >= 85 ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {Math.round(dept.accuracy)}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {Math.round(dept.alertRate)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full" 
-                            style={{ width: `${dept.efficiency}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-500">{Math.round(dept.efficiency)}%</span>
+          <div className="p-6">
+            <div className="relative h-64 flex items-center justify-center">
+              {/* Donut Chart SVG */}
+              <svg className="w-56 h-56 transform -rotate-90" viewBox="0 0 200 200">
+                <defs>
+                  <linearGradient id="criticalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#DC2626" />
+                    <stop offset="100%" stopColor="#EF4444" />
+                  </linearGradient>
+                  <linearGradient id="highGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#EA580C" />
+                    <stop offset="100%" stopColor="#F97316" />
+                  </linearGradient>
+                  <linearGradient id="mediumGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#D97706" />
+                    <stop offset="100%" stopColor="#F59E0B" />
+                  </linearGradient>
+                  <linearGradient id="lowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#059669" />
+                    <stop offset="100%" stopColor="#10B981" />
+                  </linearGradient>
+                </defs>
+                {chartData?.riskDistribution && (() => {
+                  const total = chartData.riskDistribution.reduce((sum, dept) => 
+                    sum + dept.critical_risk + dept.high_risk + dept.medium_risk + dept.low_risk, 0
+                  ) || 1;
+                  const criticalTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.critical_risk, 0);
+                  const highTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.high_risk, 0);
+                  const mediumTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.medium_risk, 0);
+                  const lowTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.low_risk, 0);
+                  
+                  const radius = 70;
+                  const strokeWidth = 20;
+                  const circumference = 2 * Math.PI * radius;
+                  
+                  const criticalPercent = (criticalTotal / total) * 100;
+                  const highPercent = (highTotal / total) * 100;
+                  const mediumPercent = (mediumTotal / total) * 100;
+                  const lowPercent = (lowTotal / total) * 100;
+                  
+                  let currentOffset = 0;
+                  
+                  return (
+                    <>
+                      {/* Background circle */}
+                      <circle
+                        cx="100"
+                        cy="100"
+                        r={radius}
+                        fill="none"
+                        stroke="#F3F4F6"
+                        strokeWidth={strokeWidth}
+                      />
+                      
+                      {/* Critical risk segment */}
+                      {criticalTotal > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke="url(#criticalGradient)"
+                          strokeWidth={strokeWidth}
+                          strokeLinecap="round"
+                          strokeDasharray={`${(criticalPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-currentOffset}
+                          className="animate-pulse"
+                        />
+                      )}
+                      
+                      {/* High risk segment */}
+                      {highTotal > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke="url(#highGradient)"
+                          strokeWidth={strokeWidth}
+                          strokeLinecap="round"
+                          strokeDasharray={`${(highPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-(currentOffset += (criticalPercent / 100) * circumference)}
+                        />
+                      )}
+                      
+                      {/* Medium risk segment */}
+                      {mediumTotal > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke="url(#mediumGradient)"
+                          strokeWidth={strokeWidth}
+                          strokeLinecap="round"
+                          strokeDasharray={`${(mediumPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-(currentOffset += (highPercent / 100) * circumference)}
+                        />
+                      )}
+                      
+                      {/* Low risk segment */}
+                      {lowTotal > 0 && (
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke="url(#lowGradient)"
+                          strokeWidth={strokeWidth}
+                          strokeLinecap="round"
+                          strokeDasharray={`${(lowPercent / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={-(currentOffset += (mediumPercent / 100) * circumference)}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
+              </svg>
+              
+              {/* Center content */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-gray-800">
+                  {chartData?.riskDistribution ? 
+                    chartData.riskDistribution.reduce((sum, dept) => 
+                      sum + dept.critical_risk + dept.high_risk + dept.medium_risk + dept.low_risk, 0
+                    ) : 0
+                  }
+                </div>
+                <div className="text-sm text-gray-600 font-medium">Total Patients</div>
+              </div>
+            </div>
+            
+            {/* Legend */}
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              {chartData?.riskDistribution && (() => {
+                const criticalTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.critical_risk, 0);
+                const highTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.high_risk, 0);
+                const mediumTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.medium_risk, 0);
+                const lowTotal = chartData.riskDistribution.reduce((sum, dept) => sum + dept.low_risk, 0);
+                
+                return (
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-gradient-to-r from-red-600 to-red-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">Critical</div>
+                        <div className="text-lg font-bold text-red-600">{criticalTotal}</div>
                       </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-gradient-to-r from-orange-600 to-orange-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">High Risk</div>
+                        <div className="text-lg font-bold text-orange-600">{highTotal}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">Medium</div>
+                        <div className="text-lg font-bold text-yellow-600">{mediumTotal}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-gradient-to-r from-green-600 to-green-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">Low Risk</div>
+                        <div className="text-lg font-bold text-green-600">{lowTotal}</div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
-        </div>
-      )}
+        </motion.div>
+
+        {/* Alert Trends Line Chart */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+        >
+          <div className="px-6 py-4 bg-gradient-to-r from-blue-500 to-indigo-600">
+            <h3 className="text-lg font-semibold text-white flex items-center">
+              <ArrowTrendingUpIcon className="w-6 h-6 mr-2" />
+              Alert Trends (7 Days)
+            </h3>
+            <p className="text-blue-100 text-sm">Daily alert frequency patterns</p>
+          </div>
+          <div className="p-6">
+            <div className="h-64">
+              {/* Line Chart SVG */}
+              <svg className="w-full h-full" viewBox="0 0 400 200">
+                <defs>
+                  <linearGradient id="criticalLineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#DC2626" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#DC2626" stopOpacity="0.1" />
+                  </linearGradient>
+                  <linearGradient id="highLineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#EA580C" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#EA580C" stopOpacity="0.1" />
+                  </linearGradient>
+                </defs>
+                
+                {chartData?.alertFrequency && (() => {
+                  const data = chartData.alertFrequency;
+                  const maxValue = Math.max(...data.map(d => Math.max(d.critical, d.high, d.medium, d.low))) || 10;
+                  const width = 400;
+                  const height = 200;
+                  const padding = 30;
+                  const chartWidth = width - 2 * padding;
+                  const chartHeight = height - 2 * padding;
+                  
+                  const getX = (index) => padding + (index * chartWidth) / (data.length - 1);
+                  const getY = (value) => height - padding - (value * chartHeight) / maxValue;
+                  
+                  const criticalPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.critical)}`).join(' ');
+                  const highPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.high)}`).join(' ');
+                  
+                  return (
+                    <g>
+                      {/* Grid lines */}
+                      {[0, 1, 2, 3, 4].map(i => (
+                        <line
+                          key={i}
+                          x1={padding}
+                          y1={padding + (i * chartHeight) / 4}
+                          x2={width - padding}
+                          y2={padding + (i * chartHeight) / 4}
+                          stroke="#F3F4F6"
+                          strokeWidth="1"
+                        />
+                      ))}
+                      
+                      {/* Critical alerts line with area */}
+                      <path
+                        d={`${criticalPath} L ${getX(data.length - 1)} ${height - padding} L ${padding} ${height - padding} Z`}
+                        fill="url(#criticalLineGradient)"
+                      />
+                      <path
+                        d={criticalPath}
+                        fill="none"
+                        stroke="#DC2626"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      
+                      {/* High risk alerts line with area */}
+                      <path
+                        d={`${highPath} L ${getX(data.length - 1)} ${height - padding} L ${padding} ${height - padding} Z`}
+                        fill="url(#highLineGradient)"
+                      />
+                      <path
+                        d={highPath}
+                        fill="none"
+                        stroke="#EA580C"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      
+                      {/* Data points */}
+                      {data.map((d, i) => (
+                        <g key={i}>
+                          <circle
+                            cx={getX(i)}
+                            cy={getY(d.critical)}
+                            r="4"
+                            fill="#DC2626"
+                            className="hover:r-6 transition-all cursor-pointer"
+                          />
+                          <circle
+                            cx={getX(i)}
+                            cy={getY(d.high)}
+                            r="3"
+                            fill="#EA580C"
+                            className="hover:r-5 transition-all cursor-pointer"
+                          />
+                        </g>
+                      ))}
+                      
+                      {/* X-axis labels */}
+                      {data.map((d, i) => (
+                        <text
+                          key={i}
+                          x={getX(i)}
+                          y={height - 5}
+                          textAnchor="middle"
+                          className="text-xs fill-gray-500"
+                        >
+                          {new Date(d.date).getDate()}
+                        </text>
+                      ))}
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
+            
+            {/* Chart Legend */}
+            <div className="flex items-center justify-center space-x-6 mt-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700">Critical Alerts</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700">High Risk Alerts</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
 
       {/* Export Instructions */}
