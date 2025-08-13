@@ -22,7 +22,7 @@ export const AlertProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await alertAPI.getActiveAlerts();
-      const alertsData = response.data || [];
+      const alertsData = Array.isArray(response.data) ? response.data : [];
       setAlerts(alertsData);
       setLastUpdated(new Date());
       return alertsData;

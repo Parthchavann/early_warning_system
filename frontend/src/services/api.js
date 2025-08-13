@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 const API_KEY = process.env.REACT_APP_API_KEY || 'secure-api-key-change-in-production';
 
 // Create axios instance with default configuration
