@@ -37,7 +37,7 @@ const Analytics = () => {
       setError(null);
 
       // Fetch real-time analytics data from the enhanced backend
-      const response = await fetch('http://localhost:8000/analytics');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8001'}/analytics`);
       
       if (!response.ok) {
         throw new Error(`Analytics API returned ${response.status}`);
