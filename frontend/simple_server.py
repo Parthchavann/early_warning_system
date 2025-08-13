@@ -1633,7 +1633,7 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
                 
                 # Create a dismissed alert record to prevent regeneration
                 cursor.execute("""
-                    INSERT OR REPLACE INTO alerts (id, patient_id, severity, message, 
+                    INSERT OR REPLACE INTO alerts (alert_id, patient_id, severity, message, 
                                                   is_acknowledged, acknowledged_at, created_at)
                     VALUES (?, ?, 'critical', 'Auto-generated alert dismissed', 1, ?, ?)
                 """, (
