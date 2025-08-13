@@ -964,11 +964,23 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
             
             conn.close()
             
-            # If no alerts in database, generate sample critical alerts for demo
+            # Only generate new alerts if no active alerts exist and none have been recently dismissed
             if not alerts:
-                # Check for high-risk patients to create alerts
+                # Check for high-risk patients to create alerts, but avoid recently dismissed ones
                 cursor = conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
+                
+                # Get recently dismissed alert patient IDs (within last hour)
+                dismissed_patient_ids = set()
+                cursor.execute("""
+                    SELECT DISTINCT patient_id FROM alerts 
+                    WHERE is_acknowledged = 1 
+                    AND acknowledged_at > datetime('now', '-1 hour')
+                """)
+                for row in cursor.fetchall():
+                    if row[0]:
+                        dismissed_patient_ids.add(row[0])
+                
                 cursor.execute("""
                     SELECT p.patient_id, p.name, p.age, p.gender, p.department, 
                            p.room_number, p.bed_number, p.primary_diagnosis,
@@ -980,6 +992,11 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
                 """)
                 
                 for row in cursor.fetchall():
+                    patient_id = row[0]
+                    # Skip patients whose alerts were recently dismissed
+                    if patient_id in dismissed_patient_ids:
+                        continue
+                        
                     if row[8] is not None:  # has vital signs
                         vitals = {
                             'heart_rate': row[8],
@@ -991,14 +1008,14 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
                         }
                         risk = fallback_risk_calculation(vitals)
                         
-                        if risk >= 0.7:  # Generate alert for high-risk patients
-                            alert_title = "🚨 CRITICAL PATIENT ALERT" if risk >= 0.8 else "⚠️ HIGH RISK PATIENT ALERT"
-                            message = f"Patient shows high risk indicators. Risk Score: {(risk * 100):.1f}%. Immediate attention required."
+                        if risk >= 0.8:  # Only generate alerts for critically high-risk patients (0.8+)
+                            alert_title = "🚨 CRITICAL PATIENT ALERT"
+                            message = f"CRITICAL: Patient shows high risk indicators. Risk Score: {(risk * 100):.1f}%. Immediate medical attention required."
                             
                             alerts.append({
-                                "id": f"auto_{row[0]}",
-                                "patient_id": row[0],
-                                "severity": "critical" if risk >= 0.8 else "high",
+                                "id": f"auto_{patient_id}",
+                                "patient_id": patient_id,
+                                "severity": "critical",
                                 "message": message,
                                 "title": alert_title,
                                 "timestamp": datetime.utcnow().isoformat(),
@@ -1371,7 +1388,6 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
             token = create_token(user_data)
             
             return {
-                "success": True,
                 "token": token,
                 "user": {
                     "user_id": user_row[0],
@@ -1608,13 +1624,38 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
             conn.execute('PRAGMA journal_mode=WAL')
             cursor = conn.cursor()
             
-            # Check if alert exists
+            # Handle auto-generated alerts (ID starts with "auto_")
+            if alert_id.startswith('auto_'):
+                # Extract patient ID from auto-generated alert ID  
+                patient_id = alert_id.replace('auto_', '')
+                
+                print(f"🔧 Handling auto-generated alert dismissal: {alert_id} for patient {patient_id}")
+                
+                # Create a dismissed alert record to prevent regeneration
+                cursor.execute("""
+                    INSERT OR REPLACE INTO alerts (id, patient_id, severity, message, 
+                                                  is_acknowledged, acknowledged_at, created_at)
+                    VALUES (?, ?, 'critical', 'Auto-generated alert dismissed', 1, ?, ?)
+                """, (
+                    alert_id,
+                    patient_id,
+                    datetime.utcnow().isoformat(),
+                    datetime.utcnow().isoformat()
+                ))
+                
+                conn.commit()
+                conn.close()
+                
+                print(f"✅ Successfully dismissed auto-generated alert: {alert_id}")
+                return {"message": "Alert dismissed successfully", "alert_id": alert_id}
+            
+            # Handle regular database alerts
             cursor.execute("SELECT id FROM alerts WHERE id = ?", (alert_id,))
             if not cursor.fetchone():
                 conn.close()
                 return {"error": "Alert not found"}
             
-            # Delete the alert
+            # Delete the regular alert
             cursor.execute("DELETE FROM alerts WHERE id = ?", (alert_id,))
             
             conn.commit()
