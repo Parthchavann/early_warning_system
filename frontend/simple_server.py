@@ -1692,7 +1692,7 @@ if __name__ == "__main__":
     class ReuseAddrTCPServer(socketserver.TCPServer):
         allow_reuse_address = True
     
-    with ReuseAddrTCPServer(("", 8001), APIHandler) as httpd:
+    with ReuseAddrTCPServer(("", 8000), APIHandler) as httpd:
         print("Server running on http://localhost:8000")
         try:
             httpd.serve_forever()
