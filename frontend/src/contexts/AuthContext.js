@@ -50,8 +50,10 @@ export const AuthProvider = ({ children }) => {
       
       const response = await authAPI.login(credentials);
       
-      if (response.data && response.data.token && response.data.user) {
-        const { token, user } = response.data;
+      // Handle direct response from simple server
+      const responseData = response.data;
+      if (responseData && responseData.token && responseData.user) {
+        const { token, user } = responseData;
         
         // Store token
         localStorage.setItem('auth_token', token);

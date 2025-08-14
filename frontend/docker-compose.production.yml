@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  patient-monitoring:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - JWT_SECRET=secure-production-jwt-secret-change-me
+      - PORT=8000
+      - DB_PATH=/app/data/patient_ews.db
+    volumes:
+      - patient_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  patient_data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
