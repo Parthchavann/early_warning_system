@@ -203,6 +203,8 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
             # Authentication endpoints
             if path == '/auth/login' and self.command == 'POST':
                 response = self.login()
+            elif path == '/auth/verify' and self.command == 'GET':
+                response = self.verify_auth()
             elif path == '/health':
                 response = {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
             elif path == '/alerts/active':
@@ -275,6 +277,32 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"Login error: {e}")
             return {"success": False, "message": "Login failed"}
+    
+    def verify_auth(self):
+        """Verify authentication token"""
+        try:
+            auth_header = self.headers.get('Authorization')
+            if not auth_header:
+                return {"success": False, "message": "No token provided"}
+            
+            payload = verify_token(auth_header)
+            if not payload:
+                return {"success": False, "message": "Invalid token"}
+            
+            # Return user info from token
+            return {
+                "success": True,
+                "user": {
+                    "user_id": payload.get('user_id'),
+                    "email": payload.get('email'),
+                    "role": payload.get('role'),
+                    "name": "Demo User"  # Since we don't store full name in token
+                }
+            }
+            
+        except Exception as e:
+            print(f"Auth verification error: {e}")
+            return {"success": False, "message": "Token verification failed"}
     
     def get_active_alerts(self):
         """Get active alerts from database"""
