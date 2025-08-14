@@ -277,62 +277,221 @@ class ProductionHandler(http.server.SimpleHTTPRequestHandler):
             return {"success": False, "message": "Login failed"}
     
     def get_active_alerts(self):
-        """Get active alerts with sample data"""
-        alerts = []
-        
-        # Generate some sample alerts for demo
-        sample_alerts = [
-            {
-                "alert_id": "ALERT_001",
-                "patient_id": "PAT_001",
-                "patient_name": "John Smith",
-                "severity": "high",
-                "risk_score": 0.85,
-                "message": "Critical vital signs detected",
-                "timestamp": datetime.utcnow().isoformat(),
-                "room": "ICU-101",
-                "vitals": {
-                    "heart_rate": 140,
-                    "blood_pressure": "90/60",
-                    "temperature": 39.2,
-                    "oxygen_saturation": 88
-                }
-            }
-        ]
-        
-        return {"alerts": sample_alerts, "count": len(sample_alerts)}
+        """Get active alerts from database"""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            # Get active alerts with patient information
+            query = """
+                SELECT 
+                    a.alert_id,
+                    a.patient_id,
+                    p.name as patient_name,
+                    a.severity,
+                    a.message,
+                    a.risk_score,
+                    a.timestamp
+                FROM alerts a
+                LEFT JOIN patients p ON a.patient_id = p.patient_id
+                WHERE a.is_acknowledged = 0 OR a.is_acknowledged IS NULL
+                ORDER BY a.timestamp DESC
+                LIMIT 50
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            alerts = []
+            for row in rows:
+                alerts.append({
+                    "alert_id": row[0],
+                    "patient_id": row[1],
+                    "patient_name": row[2],
+                    "severity": row[3],
+                    "message": row[4],
+                    "risk_score": row[5],
+                    "timestamp": row[6]
+                })
+            
+            conn.close()
+            return {"alerts": alerts, "count": len(alerts)}
+            
+        except Exception as e:
+            print(f"Database error in get_active_alerts: {e}")
+            # Fallback to empty alerts
+            return {"alerts": [], "count": 0}
     
     def get_patients(self):
-        """Get patients list with sample data"""
-        patients = [
-            {
-                "patient_id": "PAT_001",
-                "name": "John Smith",
-                "age": 65,
-                "room": "ICU-101",
-                "risk_score": 0.85,
-                "status": "critical"
-            },
-            {
-                "patient_id": "PAT_002", 
-                "name": "Jane Doe",
-                "age": 45,
-                "room": "ICU-102",
-                "risk_score": 0.35,
-                "status": "stable"
-            }
-        ]
-        
-        return {"patients": patients, "count": len(patients)}
+        """Get patients list from database"""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            # Get patients with latest vital signs
+            query = """
+                SELECT 
+                    p.patient_id,
+                    p.name,
+                    p.age,
+                    p.admission_date,
+                    p.primary_diagnosis,
+                    COALESCE(
+                        (SELECT vs.heart_rate FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 0
+                    ) as latest_hr,
+                    COALESCE(
+                        (SELECT vs.blood_pressure_systolic FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 0
+                    ) as latest_bp_sys,
+                    COALESCE(
+                        (SELECT vs.temperature FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 0
+                    ) as latest_temp,
+                    COALESCE(
+                        (SELECT vs.oxygen_saturation FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 0
+                    ) as latest_o2
+                FROM patients p
+                ORDER BY p.admission_date DESC
+            """
+            
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            patients = []
+            for row in rows:
+                # Calculate risk score based on latest vitals
+                vitals = [{
+                    'heart_rate': row[5] or 70,
+                    'blood_pressure_systolic': row[6] or 120,
+                    'temperature': row[7] or 37.0,
+                    'oxygen_saturation': row[8] or 98,
+                    'respiratory_rate': 16  # Default since not in query
+                }]
+                
+                risk_score = calculate_risk_score(vitals)
+                
+                # Determine status based on risk score
+                if risk_score > 0.7:
+                    status = "critical"
+                elif risk_score > 0.5:
+                    status = "warning"
+                else:
+                    status = "stable"
+                
+                patients.append({
+                    "patient_id": row[0],
+                    "name": row[1],
+                    "age": row[2] or 0,
+                    "admission_date": row[3],
+                    "condition": row[4],
+                    "risk_score": round(risk_score, 2),
+                    "status": status,
+                    "vitals": {
+                        "heart_rate": row[5] or 0,
+                        "blood_pressure": f"{row[6] or 120}/80",
+                        "temperature": row[7] or 37.0,
+                        "oxygen_saturation": row[8] or 98
+                    }
+                })
+            
+            conn.close()
+            return {"patients": patients, "count": len(patients)}
+            
+        except Exception as e:
+            print(f"Database error in get_patients: {e}")
+            # Fallback to empty list if database fails
+            return {"patients": [], "count": 0}
     
     def get_stats(self):
-        """Get dashboard stats"""
-        return {
-            "total_patients": 156,
-            "active_alerts": 3,
-            "high_risk_patients": 12,
-            "average_risk_score": 0.42
-        }
+        """Get dashboard stats from database"""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            # Get total patients
+            cursor.execute("SELECT COUNT(*) FROM patients")
+            total_patients = cursor.fetchone()[0]
+            
+            # Get active alerts 
+            cursor.execute("SELECT COUNT(*) FROM alerts WHERE is_acknowledged = 0 OR is_acknowledged IS NULL")
+            active_alerts = cursor.fetchone()[0]
+            
+            # Get patients with risk calculation (simplified to avoid recursion)
+            cursor.execute("""
+                SELECT 
+                    COALESCE(
+                        (SELECT vs.heart_rate FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 70
+                    ) as hr,
+                    COALESCE(
+                        (SELECT vs.blood_pressure_systolic FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 120
+                    ) as bp,
+                    COALESCE(
+                        (SELECT vs.temperature FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 37.0
+                    ) as temp,
+                    COALESCE(
+                        (SELECT vs.oxygen_saturation FROM vital_signs vs 
+                         WHERE vs.patient_id = p.id 
+                         ORDER BY vs.timestamp DESC LIMIT 1), 98
+                    ) as o2
+                FROM patients p
+            """)
+            
+            rows = cursor.fetchall()
+            high_risk_count = 0
+            total_risk = 0
+            
+            for row in rows:
+                # Simple risk calculation
+                risk_factors = 0
+                hr, bp, temp, o2 = row
+                
+                if hr < 50 or hr > 120:
+                    risk_factors += 1
+                if bp < 90 or bp > 160:
+                    risk_factors += 1
+                if temp < 35.0 or temp > 38.5:
+                    risk_factors += 1
+                if o2 < 90:
+                    risk_factors += 1
+                
+                risk_score = min(0.9, risk_factors * 0.2 + 0.1)
+                total_risk += risk_score
+                
+                if risk_score > 0.7:
+                    high_risk_count += 1
+            
+            avg_risk = total_risk / len(rows) if rows else 0
+            
+            conn.close()
+            
+            return {
+                "total_patients": total_patients,
+                "active_alerts": active_alerts,
+                "high_risk_patients": high_risk_count,
+                "average_risk_score": round(avg_risk, 2)
+            }
+            
+        except Exception as e:
+            print(f"Database error in get_stats: {e}")
+            # Fallback stats
+            return {
+                "total_patients": 0,
+                "active_alerts": 0,
+                "high_risk_patients": 0,
+                "average_risk_score": 0.0
+            }
     
     def get_analytics_data(self):
         """Get analytics data with sample data"""
