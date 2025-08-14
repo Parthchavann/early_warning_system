@@ -25,7 +25,7 @@ DB_PATH = 'patient_ews.db'
 STATIC_DIR = 'build'  # React build directory
 JWT_SECRET = os.environ.get("JWT_SECRET", "secure-production-key-change-me")
 TOKEN_EXPIRY_HOURS = 24
-PORT = int(os.environ.get("PORT", 8000))
+PORT = int(os.environ.get("PORT", 8080))
 
 def hash_password(password):
     """Hash password using SHA-256 with salt"""

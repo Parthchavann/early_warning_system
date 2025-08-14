@@ -3,7 +3,7 @@
 ## ✅ Deployment Successful!
 
 **Current Status:** Production Ready  
-**Dashboard URL:** http://localhost:8000  
+**Dashboard URL:** http://localhost:8080  
 **API Health:** ✅ Healthy  
 
 ### Test Credentials

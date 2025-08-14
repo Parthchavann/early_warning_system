@@ -16,7 +16,7 @@ npm run build
 python3 production_server.py
 ```
 
-The application will be available at: http://localhost:8000
+The application will be available at: http://localhost:8080
 
 ### Deployment Options
 
@@ -42,8 +42,8 @@ The application will be available at: http://localhost:8000
    ```
 
 3. **Access the application:**
-   - Web Interface: http://localhost:8000
-   - API Health Check: http://localhost:8000/health
+   - Web Interface: http://localhost:8080
+   - API Health Check: http://localhost:8080/health
 
 #### Option 2: Docker Deployment
 
@@ -59,7 +59,7 @@ The application will be available at: http://localhost:8000
    ```
 
 2. **Access the application:**
-   - Web Interface: http://localhost:8000
+   - Web Interface: http://localhost:8080
 
 #### Option 3: Simple Deployment Script
 
@@ -77,8 +77,8 @@ chmod +x deploy.sh
 Create a `.env.production` file:
 
 ```env
-REACT_APP_API_URL=http://localhost:8000
-REACT_APP_WS_URL=ws://localhost:8000/ws
+REACT_APP_API_URL=http://localhost:8080
+REACT_APP_WS_URL=ws://localhost:8080/ws
 REACT_APP_API_KEY=secure-api-key-change-in-production
 REACT_APP_ENVIRONMENT=production
 GENERATE_SOURCEMAP=false
@@ -106,7 +106,7 @@ INLINE_RUNTIME_CHUNK=false
 - **CPU:** 1 core minimum, 2 cores recommended
 - **RAM:** 512MB minimum, 1GB recommended
 - **Storage:** 1GB minimum for application and database
-- **Network:** Port 8000 should be accessible
+- **Network:** Port 8080 should be accessible
 
 ### Default Test Credentials
 
@@ -138,8 +138,8 @@ The production server includes:
 
 **Port already in use:**
 ```bash
-# Find process using port 8000
-lsof -i :8000
+# Find process using port 8080
+lsof -i :8080
 # Kill the process
 kill <PID>
 ```
