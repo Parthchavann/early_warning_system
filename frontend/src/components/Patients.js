@@ -49,7 +49,8 @@ const Patients = ({ onAddPatient }) => {
       setLoading(true);
       setError(null);
       const response = await patientAPI.getAllPatients();
-      setPatients(response.data || []);
+      // API returns {patients: [...], count: N}
+      setPatients(response.data?.patients || []);
     } catch (error) {
       console.error('Failed to load patients:', error);
       setError('Failed to load patients');

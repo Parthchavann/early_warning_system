@@ -39,8 +39,8 @@ const Dashboard = ({ onAddPatient }) => {
       ]);
 
       setStats(statsResponse.data);
-      // Get the 5 most recent patients
-      const patients = patientsResponse.data || [];
+      // Get the 5 most recent patients - API returns {patients: [...], count: N}
+      const patients = patientsResponse.data?.patients || [];
       setRecentPatients(patients.slice(0, 5));
 
     } catch (error) {
