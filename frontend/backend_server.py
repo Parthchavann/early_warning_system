@@ -170,6 +170,17 @@ class BackendAPIHandler(http.server.BaseHTTPRequestHandler):
                 response = self.get_active_alerts()
             elif path == '/patients' and self.command == 'GET':
                 response = self.get_patients()
+            elif path == '/patients' and self.command == 'POST':
+                response = self.create_patient()
+            elif path.startswith('/patients/') and self.command == 'GET':
+                patient_id = path.split('/')[-1]
+                response = self.get_patient(patient_id)
+            elif path.startswith('/patients/') and self.command == 'PUT':
+                patient_id = path.split('/')[-1]
+                response = self.update_patient(patient_id)
+            elif path.startswith('/patients/') and self.command == 'DELETE':
+                patient_id = path.split('/')[-1]
+                response = self.delete_patient(patient_id)
             elif path == '/stats':
                 response = self.get_stats()
             elif path == '/analytics' or path == '/analytics/data':

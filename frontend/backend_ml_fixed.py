@@ -313,7 +313,9 @@ class MLAPIHandler(http.server.BaseHTTPRequestHandler):
                 "total_patients": total_patients,
                 "active_alerts": 0,
                 "high_risk_patients": high_risk_count,
-                "average_risk_score": round(avg_risk, 2)
+                "average_risk_score": round(avg_risk, 2),
+                "critical_patients": high_risk_count,  # Same as high_risk_patients for now
+                "avg_response_time": 2.5  # Sample response time in minutes
             }
             
         except Exception as e:
@@ -322,7 +324,9 @@ class MLAPIHandler(http.server.BaseHTTPRequestHandler):
                 "total_patients": 0,
                 "active_alerts": 0,
                 "high_risk_patients": 0,
-                "average_risk_score": 0.0
+                "average_risk_score": 0.0,
+                "critical_patients": 0,
+                "avg_response_time": 0.0
             }
     
     def get_analytics_data(self):
@@ -338,6 +342,22 @@ class MLAPIHandler(http.server.BaseHTTPRequestHandler):
             medium_risk = len([p for p in patients if 0.3 <= p['risk_score'] < 0.7])
             high_risk = len([p for p in patients if p['risk_score'] >= 0.7])
             
+            # Generate sample alert frequency data for the last 7 days
+            from datetime import datetime, timedelta
+            alert_frequency_data = []
+            for i in range(7):
+                date = datetime.now() - timedelta(days=6-i)
+                # Simulate alert frequency based on risk distribution
+                critical_alerts = max(0, high_risk - 2 + (i % 3))
+                high_alerts = max(0, medium_risk - 1 + (i % 2))
+                alert_frequency_data.append({
+                    "date": date.isoformat(),
+                    "critical": critical_alerts,
+                    "high": high_alerts,
+                    "medium": 1 if i % 4 == 0 else 0,
+                    "low": 0
+                })
+
             return {
                 "total_patients": total_patients,
                 "active_alerts": 0,
@@ -355,7 +375,8 @@ class MLAPIHandler(http.server.BaseHTTPRequestHandler):
                     "low": low_risk,
                     "medium": medium_risk,
                     "high": high_risk
-                }
+                },
+                "alert_frequency": alert_frequency_data
             }
             
         except Exception as e:
