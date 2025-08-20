@@ -22,7 +22,23 @@ export const AlertProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await alertAPI.getActiveAlerts();
-      const alertsData = Array.isArray(response.data) ? response.data : [];
+      
+      // Handle the correct response structure
+      let alertsData = [];
+      if (response.data && response.data.alerts && Array.isArray(response.data.alerts)) {
+        alertsData = response.data.alerts.map(alert => ({
+          ...alert,
+          id: alert.alert_id || alert.id, // Map alert_id to id for frontend compatibility
+          is_acknowledged: alert.is_acknowledged || alert.acknowledged || false
+        }));
+      } else if (Array.isArray(response.data)) {
+        alertsData = response.data.map(alert => ({
+          ...alert,
+          id: alert.alert_id || alert.id,
+          is_acknowledged: alert.is_acknowledged || alert.acknowledged || false
+        }));
+      }
+      
       setAlerts(alertsData);
       setLastUpdated(new Date());
       return alertsData;

@@ -86,63 +86,35 @@ def verify_token(auth_header):
         return None
 
 def calculate_risk_score(vitals):
-    """Calculate risk score using enhanced ML-based algorithm"""
+    """Calculate risk score using original algorithm"""
     if not vitals:
         return 0.1
     
-    # Use the most recent vital signs
-    latest = vitals[-1] if isinstance(vitals, list) else vitals
+    latest = vitals[-1]
     risk_factors = 0
     
-    # Heart rate thresholds (normal: 60-100)
-    hr = latest.get('heart_rate', 70)
-    if hr < 50 or hr > 120:
-        risk_factors += 2
-    elif hr < 60 or hr > 100:
+    # Heart rate thresholds
+    if latest['heart_rate'] < 50 or latest['heart_rate'] > 120:
         risk_factors += 1
     
-    # Blood pressure thresholds (normal systolic: 90-140)
-    bp_sys = latest.get('blood_pressure_systolic', 120)
-    if bp_sys < 80 or bp_sys > 180:
-        risk_factors += 2
-    elif bp_sys < 90 or bp_sys > 140:
+    # Blood pressure thresholds  
+    if latest['blood_pressure_systolic'] < 90 or latest['blood_pressure_systolic'] > 160:
         risk_factors += 1
     
-    # Respiratory rate thresholds (normal: 12-20)
-    rr = latest.get('respiratory_rate', 16)
-    if rr < 8 or rr > 30:
-        risk_factors += 2
-    elif rr < 12 or rr > 20:
+    # Respiratory rate thresholds
+    if latest['respiratory_rate'] < 10 or latest['respiratory_rate'] > 24:
         risk_factors += 1
     
-    # Temperature thresholds (normal: 36.5-37.5)
-    temp = latest.get('temperature', 37.0)
-    if temp < 35.0 or temp > 39.0:
-        risk_factors += 2
-    elif temp < 36.0 or temp > 38.0:
+    # Temperature thresholds
+    if latest['temperature'] < 35.0 or latest['temperature'] > 38.5:
         risk_factors += 1
     
-    # Oxygen saturation thresholds (normal: >95%)
-    o2_sat = latest.get('oxygen_saturation', 98)
-    if o2_sat < 88:
-        risk_factors += 3
-    elif o2_sat < 92:
-        risk_factors += 2
-    elif o2_sat < 95:
+    # Oxygen saturation thresholds
+    if latest['oxygen_saturation'] < 90:
         risk_factors += 1
     
-    # Calculate final risk score (0.1 to 1.0) with better scaling
-    if risk_factors >= 6:
-        final_risk = 0.9  # Critical
-    elif risk_factors >= 4:
-        final_risk = 0.7  # High
-    elif risk_factors >= 2:
-        final_risk = 0.5  # Medium  
-    elif risk_factors >= 1:
-        final_risk = 0.3  # Low-Medium
-    else:
-        final_risk = 0.1  # Low
-    
+    # Calculate final risk score
+    final_risk = min(0.9, risk_factors * 0.2 + 0.1)
     return final_risk
 
 class BackendAPIHandler(http.server.BaseHTTPRequestHandler):
@@ -209,15 +181,6 @@ class BackendAPIHandler(http.server.BaseHTTPRequestHandler):
             elif path.startswith('/patients/') and self.command == 'DELETE':
                 patient_id = path.split('/')[-1]
                 response = self.delete_patient(patient_id)
-            elif path.startswith('/patients/') and path.endswith('/vitals') and self.command == 'POST':
-                patient_id = path.split('/')[-2]
-                response = self.add_vitals(patient_id)
-            elif path.startswith('/patients/') and path.endswith('/vitals') and self.command == 'GET':
-                patient_id = path.split('/')[-2]
-                response = self.get_vitals(patient_id)
-            elif path.startswith('/patients/') and path.endswith('/predict') and self.command == 'POST':
-                patient_id = path.split('/')[-2]
-                response = self.predict_risk(patient_id)
             elif path == '/stats':
                 response = self.get_stats()
             elif path == '/analytics' or path == '/analytics/data':
@@ -655,3 +618,152 @@ if __name__ == "__main__":
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\nShutting down backend server...")
+    def create_patient(self):
+        """Create a new patient"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            patient_data = json.loads(post_data)
+            
+            # Generate unique patient ID
+            patient_id = f"P{datetime.now().strftime('%Y%m%d%H%M%S')}{secrets.token_hex(2)}"
+            
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            # Check if database has required columns
+            cursor.execute("PRAGMA table_info(patients)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            # Base patient data
+            name = patient_data.get('name', 'Unknown Patient')
+            age = patient_data.get('age', 0)
+            admission_date = patient_data.get('admission_date', datetime.now().isoformat())
+            
+            # Insert based on available columns
+            if 'primary_diagnosis' in columns:
+                cursor.execute("""
+                    INSERT INTO patients (patient_id, name, age, admission_date, primary_diagnosis, room)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (patient_id, name, age, admission_date, 
+                      patient_data.get('primary_diagnosis', ''), patient_data.get('room', '')))
+            else:
+                cursor.execute("""
+                    INSERT INTO patients (patient_id, name, age, admission_date, room)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (patient_id, name, age, admission_date, patient_data.get('room', '')))
+            
+            conn.commit()
+            conn.close()
+            
+            return {
+                "success": True,
+                "patient_id": patient_id,
+                "message": "Patient created successfully"
+            }
+            
+        except Exception as e:
+            print(f"Error creating patient: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def get_patient(self, patient_id):
+        """Get a single patient by ID"""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT patient_id, name, age, admission_date, primary_diagnosis
+                FROM patients WHERE patient_id = ?
+            """, (patient_id,))
+            
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                return {
+                    "patient_id": row[0],
+                    "name": row[1],
+                    "age": row[2],
+                    "admission_date": row[3],
+                    "primary_diagnosis": row[4] if len(row) > 4 else None
+                }
+            else:
+                return {"error": "Patient not found"}
+                
+        except Exception as e:
+            print(f"Error getting patient: {e}")
+            return {"error": str(e)}
+    
+    def update_patient(self, patient_id):
+        """Update patient information"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            update_data = json.loads(post_data)
+            
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            # Check if database has required columns
+            cursor.execute("PRAGMA table_info(patients)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            # Build update query dynamically based on provided fields
+            update_fields = []
+            values = []
+            
+            if 'name' in update_data:
+                update_fields.append("name = ?")
+                values.append(update_data['name'])
+            if 'age' in update_data:
+                update_fields.append("age = ?")
+                values.append(update_data['age'])
+            if 'primary_diagnosis' in update_data and 'primary_diagnosis' in columns:
+                update_fields.append("primary_diagnosis = ?")
+                values.append(update_data['primary_diagnosis'])
+            if 'room' in update_data:
+                update_fields.append("room = ?")
+                values.append(update_data['room'])
+            
+            if update_fields:
+                values.append(patient_id)
+                query = f"UPDATE patients SET {', '.join(update_fields)} WHERE patient_id = ?"
+                cursor.execute(query, values)
+                conn.commit()
+            
+            conn.close()
+            
+            return {
+                "success": True,
+                "message": "Patient updated successfully"
+            }
+            
+        except Exception as e:
+            print(f"Error updating patient: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def delete_patient(self, patient_id):
+        """Delete a patient"""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            cursor = conn.cursor()
+            
+            # Delete associated vital signs first
+            cursor.execute("DELETE FROM vital_signs WHERE patient_id = ?", (patient_id,))
+            # Delete associated alerts
+            cursor.execute("DELETE FROM alerts WHERE patient_id = ?", (patient_id,))
+            # Delete patient
+            cursor.execute("DELETE FROM patients WHERE patient_id = ?", (patient_id,))
+            
+            conn.commit()
+            conn.close()
+            
+            return {
+                "success": True,
+                "message": "Patient deleted successfully"
+            }
+            
+        except Exception as e:
+            print(f"Error deleting patient: {e}")
+            return {"success": False, "error": str(e)}
