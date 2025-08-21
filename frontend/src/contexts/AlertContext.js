@@ -19,12 +19,9 @@ export const AlertProvider = ({ children }) => {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      console.log('🔄 AlertContext: Starting fetchAlerts...');
       setLoading(true);
       setError(null);
       const response = await alertAPI.getActiveAlerts();
-      
-      console.log('📡 AlertContext: Raw API response:', response.data);
       
       // Handle the correct response structure
       let alertsData = [];
@@ -41,9 +38,6 @@ export const AlertProvider = ({ children }) => {
           is_acknowledged: alert.is_acknowledged || alert.acknowledged || false
         }));
       }
-      
-      console.log('✅ AlertContext: Processed alerts:', alertsData.length);
-      console.log('🚨 AlertContext: Critical alerts:', alertsData.filter(a => a.severity === 'critical').length);
       
       setAlerts(alertsData);
       setLastUpdated(new Date());

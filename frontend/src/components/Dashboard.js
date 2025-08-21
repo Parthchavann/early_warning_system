@@ -23,36 +23,6 @@ const Dashboard = ({ onAddPatient }) => {
   
   // Use global alert context
   const { activeAlerts, acknowledgeAlert } = useAlerts();
-  
-  // Debug logging
-  console.log('📊 Dashboard: activeAlerts received:', activeAlerts.length);
-  console.log('🚨 Dashboard: First 3 alerts:', activeAlerts.slice(0, 3));
-  
-  // Temporary fallback: If no alerts from context, fetch directly
-  const [fallbackAlerts, setFallbackAlerts] = useState([]);
-  
-  useEffect(() => {
-    if (activeAlerts.length === 0) {
-      // Fallback: Direct API call to test if AlertContext is the issue
-      fetch('http://localhost:8080/alerts/active')
-        .then(response => response.json())
-        .then(data => {
-          if (data?.alerts) {
-            const processedAlerts = data.alerts.map(alert => ({
-              ...alert,
-              id: alert.alert_id || alert.id,
-              is_acknowledged: false
-            }));
-            setFallbackAlerts(processedAlerts);
-            console.log('🔄 Dashboard: Using fallback alerts:', processedAlerts.length);
-          }
-        })
-        .catch(error => console.error('Fallback alert fetch failed:', error));
-    }
-  }, [activeAlerts.length]);
-  
-  // Use AlertContext alerts if available, otherwise use fallback
-  const displayAlerts = activeAlerts.length > 0 ? activeAlerts : fallbackAlerts;
 
   useEffect(() => {
     loadDashboardData();
@@ -312,9 +282,9 @@ const Dashboard = ({ onAddPatient }) => {
             </div>
           </div>
           <div className="p-6">
-            {displayAlerts.length > 0 ? (
+            {activeAlerts.length > 0 ? (
               <div className="space-y-4">
-                {displayAlerts.map((alert, index) => (
+                {activeAlerts.map((alert, index) => (
                   <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">

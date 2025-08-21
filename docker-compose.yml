@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Backend API Server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: patient-deterioration-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/app/data/patient_ews.db
+      - JWT_SECRET=${JWT_SECRET:-change-this-super-secure-jwt-secret}
+      - API_KEY=${API_KEY:-change-this-secure-api-key}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://your-domain.com}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=8080
+      - HOST=0.0.0.0
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    ports:
+      - "8080:8080"
+    networks:
+      - patient-deterioration-network
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Web Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: patient-deterioration-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - patient-deterioration-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database backup service (optional)
+  db-backup:
+    image: alpine:latest
+    container_name: patient-deterioration-backup
+    restart: unless-stopped
+    environment:
+      - BACKUP_INTERVAL=${BACKUP_INTERVAL:-86400}  # 24 hours
+    volumes:
+      - backend_data:/data:ro
+      - backup_data:/backup
+    command: |
+      sh -c "
+        while true; do
+          echo 'Creating database backup...'
+          cp /data/patient_ews.db /backup/patient_ews_$(date +%Y%m%d_%H%M%S).db
+          # Keep only last 7 backups
+          ls -t /backup/patient_ews_*.db | tail -n +8 | xargs rm -f
+          echo 'Backup completed. Next backup in ${BACKUP_INTERVAL} seconds.'
+          sleep ${BACKUP_INTERVAL}
+        done
+      "
+    networks:
+      - patient-deterioration-network
+
+volumes:
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+  backup_data:
+    driver: local
+
+networks:
+  patient-deterioration-network:
+    driver: bridge
