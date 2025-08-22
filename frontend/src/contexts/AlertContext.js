@@ -39,6 +39,7 @@ export const AlertProvider = ({ children }) => {
         }));
       }
       
+      
       setAlerts(alertsData);
       setLastUpdated(new Date());
       return alertsData;

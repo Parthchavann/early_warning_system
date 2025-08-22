@@ -22,7 +22,8 @@ const Dashboard = ({ onAddPatient }) => {
   const [error, setError] = useState(null);
   
   // Use global alert context
-  const { activeAlerts, acknowledgeAlert } = useAlerts();
+  const { activeAlerts, acknowledgeAlert, refreshAlerts } = useAlerts();
+  
 
   useEffect(() => {
     loadDashboardData();
