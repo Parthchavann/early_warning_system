@@ -1,6 +1,6 @@
 {
-  "name": "patient-monitoring-frontend",
-  "version": "0.1.0",
+  "name": "patient-deterioration-frontend",
+  "version": "2.0.0",
   "private": true,
   "dependencies": {
     "@heroicons/react": "^2.0.18",
@@ -39,6 +39,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",

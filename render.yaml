@@ -1,0 +1,67 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: patient-deterioration-db
+    env: python
+    plan: free
+    databaseName: patient_deterioration_db
+    user: admin
+
+  # Backend API Service
+  - type: web
+    name: patient-deterioration-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python frontend/backend_server.py
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: patient-deterioration-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: "https://patient-deterioration-frontend.onrender.com"
+      - key: DEBUG
+        value: "false"
+    domains:
+      - patient-deterioration-api.onrender.com
+
+  # Frontend React Service  
+  - type: web
+    name: patient-deterioration-frontend
+    env: static
+    plan: free
+    buildCommand: |
+      cd frontend && 
+      npm install && 
+      npm run build
+    staticPublishPath: ./frontend/build
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: REACT_APP_API_URL
+        value: "https://patient-deterioration-api.onrender.com"
+      - key: REACT_APP_API_KEY
+        value: "render-production-key-2024"
+      - key: NODE_ENV
+        value: production
+    domains:
+      - patient-deterioration-frontend.onrender.com
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
